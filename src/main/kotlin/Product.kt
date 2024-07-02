@@ -34,7 +34,12 @@ data class Product(
         quantity.print()
         nutritionalInfos.print()
         println("Price: $price")
-        println("https://courses.monoprix.fr/api/webproductpagews/v5/products/bop?retailerProductId=$id")
-        println("https://courses.monoprix.fr/products/$id/details")
+        println(getProtPerEuro())
+        printLinksOfProduct(id)
+    }
+
+    fun getProtPerEuro(): Double {
+        val priceFor100g = (price / quantity.value) * 100
+        return nutritionalInfos.proteins / price
     }
 }

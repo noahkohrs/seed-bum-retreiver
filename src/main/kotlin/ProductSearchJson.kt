@@ -5,7 +5,6 @@ class ProductSearchJson(
         val product : Map<String, Prod>
     )
 
-
     data class Prod(
         val productId: String,
         val retailerProductId: String,

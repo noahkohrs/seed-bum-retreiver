@@ -1,17 +1,8 @@
-package org.example
-
-
-import NonParseableData
-import Product
-import ProductJson
-import ProductSearchJson
 import com.google.gson.Gson
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.*
-import parseGrams
-import parseQuantity
-import parseHtmlAsADocument
-import parseRowContentFromName
 import java.io.File
 import java.io.IOException
 
@@ -56,15 +47,9 @@ fun createProduct(json: ProductJson): Product {
     throw NonParseableData("Could not find nutritional data for product $name")
 }
 
-fun getProduct(itemId: String): Product? {
-    try {
-        val item = fetchItem(itemId)
-        return createProduct(item)
-    } catch (e: Exception) {
-        println("Error fetching item $itemId")
-        println(e)
-        return null
-    }
+fun getProduct(itemId: String): Product {
+    val item = fetchItem(itemId)
+    return createProduct(item)
 }
 
 fun getProductsForTitle(title: String): List<ProductSearchJson.Prod> {
@@ -83,6 +68,7 @@ fun getProductsForTitle(title: String): List<ProductSearchJson.Prod> {
 fun main() {
     val products = mutableListOf<Product>()
     val startTime = System.currentTimeMillis()
+    val mutex = Mutex()
     val category = listOf(
         "Lait",
         "Oeuf",
@@ -92,27 +78,43 @@ fun main() {
     )
     var totalProducts = 0
     var success = 0
-    var failed = 0
+    var failedAttempts = 0
     category.forEach {
         val items = getProductsForTitle(it)
         totalProducts += items.size
         items.forEach { item ->
             CoroutineScope(Dispatchers.IO).launch {
-                val product = getProduct(item.retailerProductId)
-                if (product != null) {
-                    success++
-                    products.addLast(product)
-                } else {
-                    failed++
+                val itemId = item.retailerProductId
+                try {
+                    val product = getProduct(itemId)
+                    mutex.withLock {
+                        success++
+                        products.addLast(product)
+                    }
+                } catch (e: Exception) {
+                    mutex.withLock {
+                        failedAttempts++
+                        println()
+                        println("Error while retrieving product $itemId:")
+                        println(e)
+                        printLinksOfProduct(itemId)
+                    }
                 }
             }
         }
     }
 
     // Block until success + failed == totalProducts
-    while (success + failed < totalProducts) {
-        Thread.sleep(1000)
+    runBlocking {
+        while (success + failedAttempts < totalProducts) {
+            delay(100)
+            println("Waiting for products to be fetched... ${success+failedAttempts}/$totalProducts")
+        }
     }
+
+    // sort products by protein per euro
+    products.sortByDescending { it.getProtPerEuro() }
+    products.reverse()
 
     products.forEach { it.print() }
     println("Total products: $totalProducts")
