@@ -30,6 +30,7 @@ data class Product(
 
 
     fun print() {
+        println()
         println("Product: $name")
         quantity.print()
         nutritionalInfos.print()

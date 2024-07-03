@@ -5,6 +5,8 @@ import kotlinx.coroutines.sync.withLock
 import okhttp3.*
 import java.io.File
 import java.io.IOException
+import java.util.Date
+import kotlin.math.log
 
 val cacheFile = File("./cache")
 val client = OkHttpClient.Builder()
@@ -44,7 +46,7 @@ fun createProduct(json: ProductJson): Product {
             )
         }
     }
-    throw NonParseableData("Could not find nutritional data for product $name")
+    throw MissingDataException("Could not find nutritional data for product $name")
 }
 
 fun getProduct(itemId: String): Product {
@@ -66,19 +68,21 @@ fun getProductsForTitle(title: String): List<ProductSearchJson.Prod> {
 }
 
 fun main() {
+    val logger = Logger("./logs")
     val products = mutableListOf<Product>()
     val startTime = System.currentTimeMillis()
     val mutex = Mutex()
     val category = listOf(
-        "Lait",
-        "Oeuf",
+        "Fromage frais",
+        "Fromage",
         "Viande",
         "Poisson",
-        "Fruit"
+        "Protéines"
     )
     var totalProducts = 0
     var success = 0
     var failedAttempts = 0
+
     category.forEach {
         val items = getProductsForTitle(it)
         totalProducts += items.size
@@ -90,14 +94,12 @@ fun main() {
                     mutex.withLock {
                         success++
                         products.addLast(product)
+                        logger.log("Success", itemId)
                     }
                 } catch (e: Exception) {
                     mutex.withLock {
                         failedAttempts++
-                        println()
-                        println("Error while retrieving product $itemId:")
-                        println(e)
-                        printLinksOfProduct(itemId)
+                        logger.log(e, itemId)
                     }
                 }
             }
@@ -112,9 +114,11 @@ fun main() {
         }
     }
 
+
     // sort products by protein per euro
     products.sortByDescending { it.getProtPerEuro() }
     products.reverse()
+    logger.saveLogs()
 
     products.forEach { it.print() }
     println("Total products: $totalProducts")
@@ -127,7 +131,7 @@ fun main() {
 fun getNutritionalInfosFromHtml(html: String): Product.NutritionalInfos {
     val document = parseHtmlAsADocument(html)
     val proteins = document.parseRowContentFromName("Protéines")
-    val carbohydrates = try {document.parseRowContentFromName("Glucides") } catch (e: NonParseableData) {null}
+    val carbohydrates = try {document.parseRowContentFromName("Glucides")} catch (e: NonParseableData) {null}
     val salt = try {document.parseRowContentFromName("Sel")} catch (e: NonParseableData) {null}
     val fats = try {document.parseRowContentFromName("Matières grasses")} catch (e: NonParseableData) {null}
 

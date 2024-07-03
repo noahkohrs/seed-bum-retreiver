@@ -1,11 +1,13 @@
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
-class NonParseableData(message: String) : Exception(message)
+abstract class ParseException(message: String) : Exception(message)
+class MissingDataException(message: String) : ParseException(message)
+class NonParseableData(message: String) : ParseException(message)
 
 fun Document.parseRowContentFromName(rowName: String) : String {
     val row = select("td:contains($rowName)").first()
-    return row?.nextElementSibling()?.text()?.trim() ?: throw NonParseableData("Could not parse $rowName")
+    return row?.nextElementSibling()?.text()?.trim() ?: throw MissingDataException("Could not parse $rowName")
 }
 
 
