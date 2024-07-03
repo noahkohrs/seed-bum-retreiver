@@ -2,16 +2,13 @@ import java.io.File
 import java.util.*
 
 class Logger(private val directoryPath: String) {
-    private lateinit var file: File
-
-
     private val startTime = System.currentTimeMillis()
-    private val content: MutableMap<String, MutableList<Log>> = mutableMapOf()
+    private val fails: MutableMap<String, MutableList<Log>> = mutableMapOf()
+    private val success = mutableListOf<Log>()
 
     data class Log(
         val productId : String,
-        val message: String,
-        val success: Boolean = false
+        val message: String
     ) {
         fun log() : String {
             return """
@@ -31,31 +28,50 @@ class Logger(private val directoryPath: String) {
     fun log(e: Exception, productId: String) {
         val log = Log(productId, e.message ?: "No message")
         // println("Missing data for product $productId: ${e.message}")
-        content.getOrPut(e.javaClass.simpleName) { mutableListOf() }.add(log)
+        fails.getOrPut(e.javaClass.simpleName) { mutableListOf() }.add(log)
     }
     fun log(s: String, productId: String) {
-        // val log = Log(productId, "", true)
-        // println("Missing data for product $productId: ${e.message}")
-        // content.getOrPut(s) { mutableListOf() }.add(log)
+        val log = Log(productId, s)
+        success.add(log)
     }
 
-    fun saveLogs() {
+    private fun getFile(): File {
         val cal = Calendar.getInstance(Locale.FRANCE)
-        val beginning = "# **LOGS OF ${ Date(System.currentTimeMillis()) }** \n\n-------------------\n\n"
         val nameId = """
             ${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH)}-${cal.get(Calendar.DAY_OF_MONTH)}-${cal.get(Calendar.HOUR_OF_DAY)}-${cal.get(Calendar.MINUTE)}-${cal.get(Calendar.SECOND)}
         """.trimIndent().replace("\n", "")
-        file = File(directoryPath, "$nameId.md")
-        file.appendText(beginning)
-        content.keys.forEach {
+        return File(directoryPath, "$nameId.md")
+    }
+
+    fun saveLogs() {
+
+        val file = getFile()
+        file.appendText("# **Logs of ${ Date(System.currentTimeMillis()) }** \n\n-------------------\n\n")
+
+        file.appendText("## Quick Report\n\n")
+        file.appendText(quickResult())
+
+        file.appendText("## Report\n\n")
+        fails.keys.forEach {
             file.appendText(categoryText(it))
         }
     }
 
+    fun quickResult(): String {
+        val endTime = System.currentTimeMillis()
+        val duration = endTime - startTime
+        val strBuilder = StringBuilder()
+        strBuilder.append("Total time: ${"%.2f".format(duration.toDouble() / 1000)} seconds\n\n")
+        strBuilder.append("Total products: ${success.size + fails.values.sumBy { it.size }}\n\n")
+        strBuilder.append("Success: ${success.size}\n\n")
+        strBuilder.append("Failed attempts: ${fails.values.sumOf { it.size }}\n\n")
+        return strBuilder.toString()
+    }
+
     fun categoryText(name: String): String {
         val strBuilder = StringBuilder()
-        strBuilder.append("## $name\n\n")
-        content[name]?.forEach {
+        strBuilder.append("### $name\n\n")
+        fails[name]?.forEach {
             strBuilder.append(it.log())
             strBuilder.append("\n\n")
         }
