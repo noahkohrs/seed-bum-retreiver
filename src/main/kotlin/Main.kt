@@ -131,9 +131,9 @@ fun main() {
 fun getNutritionalInfosFromHtml(html: String): Product.NutritionalInfos {
     val document = parseHtmlAsADocument(html)
     val proteins = document.parseRowContentFromName("Protéines")
-    val carbohydrates = try {document.parseRowContentFromName("Glucides")} catch (e: NonParseableData) {null}
-    val salt = try {document.parseRowContentFromName("Sel")} catch (e: NonParseableData) {null}
-    val fats = try {document.parseRowContentFromName("Matières grasses")} catch (e: NonParseableData) {null}
+    val carbohydrates = try {document.parseRowContentFromName("Glucides")} catch (e: MissingDataException) {null}
+    val salt = try {document.parseRowContentFromName("Sel")} catch (e: MissingDataException) {null}
+    val fats = try {document.parseRowContentFromName("Matières grasses")} catch (e: MissingDataException) {null}
 
     return Product.NutritionalInfos(
         proteins = parseGrams(proteins).value,
