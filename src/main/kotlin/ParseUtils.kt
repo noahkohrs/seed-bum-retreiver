@@ -18,13 +18,6 @@ fun Document.parseRowContentFromName(rowName: String) : String {
  * @throws NonParseableData if the string could not be parsed
  */
 fun parseQuantity(str: String) : Product.Quantity {
-    val prod = Product(
-        id = "id",
-        name = "name",
-        nutritionalInfos = Product.NutritionalInfos(0.0),
-        price = 0.0,
-        quantity = Product.Quantity(0.0, "g")
-    )
     return when {
         str.contains("g") -> parseGrams(str)
         else -> throw NonParseableData("Could not parse quantity in $str")
