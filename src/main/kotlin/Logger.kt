@@ -62,7 +62,7 @@ class Logger(private val directoryPath: String) {
         val duration = endTime - startTime
         val strBuilder = StringBuilder()
         strBuilder.append("Total time: ${"%.2f".format(duration.toDouble() / 1000)} seconds\n\n")
-        strBuilder.append("Total products: ${success.size + fails.values.sumBy { it.size }}\n\n")
+        strBuilder.append("Total products: ${success.size + fails.values.sumOf { it.size }}\n\n")
         strBuilder.append("Success: ${success.size}\n\n")
         strBuilder.append("Failed attempts: ${fails.values.sumOf { it.size }}\n\n")
         return strBuilder.toString()
