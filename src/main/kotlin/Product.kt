@@ -41,6 +41,6 @@ data class Product(
 
     fun getProtPerEuro(): Double {
         val priceFor100g = (price / quantity.value) * 100
-        return nutritionalInfos.proteins / price
+        return nutritionalInfos.proteins / priceFor100g
     }
 }
